@@ -1,0 +1,77 @@
+services:
+  jcac:
+    image: nginx:latest
+    volumes:
+    - type: bind
+      source: ./jcac.yml
+      target: /usr/share/nginx/html/jcac.yml
+    networks:
+      - jenkins
+  jenkins:
+    image: samitkumarpatel/jenkins:26122024 #jenkins/jenkins:lts
+    container_name: jenkins
+    ports:
+      - "8080:8080"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - ./plugins.txt:/usr/share/jenkins/ref/plugins.txt
+    environment:
+      - JAVA_OPTS="-Djenkins.install.runSetupWizard=false"
+      - CASC_JENKINS_CONFIG=http://jcac/jcac.yml
+    networks:
+      - jenkins
+    depends_on:
+      - jcac
+  dind:
+    image: docker:dind
+    privileged: true
+    networks:
+      jenkins:
+        aliases:
+          - docker
+    expose:
+    - "2376"
+    environment:
+    - DOCKER_TLS_CERTDIR=/certs
+    volumes: 
+    - type: volume
+      source: jenkins-docker-certs
+      target: /certs/client
+  docker:
+    image: jenkins/jnlp-agent-docker:latest
+    init: true
+    environment:
+    - JENKINS_URL=http://jenkins:8080
+    - JENKINS_SECRET=${DOCKER_TOKEN:-fake}
+    - JENKINS_AGENT_NAME=docker
+    - DOCKER_HOST=tcp://docker:2376
+    - DOCKER_CERT_PATH=/certs/client
+    - DOCKER_TLS_VERIFY=1
+    networks:
+    - jenkins
+    volumes:
+    - type: volume
+      source: jenkins-docker-certs
+      target: /certs/client
+      read_only: true
+    depends_on:
+    - jcac
+    - jenkins
+  terraform:
+    image: jenkins/jnlp-agent-terraform:latest
+    init: true
+    environment:
+    - JENKINS_URL=http://jenkins:8080
+    - JENKINS_SECRET=${TERRAFORM_TOKEN:-fake}
+    - JENKINS_AGENT_NAME=terraform
+    networks:
+    - jenkins
+    depends_on:
+    - jcac
+    - jenkins
+
+volumes:
+  jenkins_home:
+  jenkins-docker-certs:
+networks:
+  jenkins:
