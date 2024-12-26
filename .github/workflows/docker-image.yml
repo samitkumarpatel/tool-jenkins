@@ -15,7 +15,7 @@ jobs:
     - 
       name: Build the Docker image
       run: |
-        docker build -t ghcr.io/samitkumarpatel/tool-jenkins:$(date '+%d%m%Y') .
+        docker build -t ghcr.io/samitkumarpatel/tool-jenkins:$(date '+%d%m%Y') -t ghcr.io/samitkumarpatel/tool-jenkins:latest .
     
     -
       name: Login to GitHub Container Registry
@@ -27,4 +27,4 @@ jobs:
     - 
       name: push
       run: |
-        docker push -a samitkumarpatel/jenkins
+        docker push -a ghcr.io/samitkumarpatel/tool-jenkins
